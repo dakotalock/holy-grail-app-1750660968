@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EchoBot: Simple Full Stack Chat</title>
+    <!--
+        1. Tailwind CSS via CDN:
+        This script tag imports the Tailwind CSS framework directly from a CDN.
+        It provides a wide range of utility classes for rapid UI development,
+        ensuring a modern and responsive design with minimal custom CSS.
+    -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /*
+            2. Embedded Custom CSS:
+            While Tailwind CSS handles most of the layout and basic styling,
+            custom CSS is used here for more specific elements like chat bubbles
+            and scrollbar styling, which are not directly covered by Tailwind's
+            utility-first approach or require more intricate adjustments.
+        */
+
+        /* Basic body styling for centering and background */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Modern, clean font */
+            background-color: #f0f2f5; /* Light gray background for the page */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* Ensure full viewport height */
+            margin: 0;
+        }
+
+        /* Styling for the ChatHistoryDisplay container */
+        #chat-history {
+            height: 400px; /* Fixed height as specified in the technical plan */
+            overflow-y: auto; /* Enables vertical scrolling when content overflows */
+            scroll-behavior: smooth; /* Smooth scrolling effect for new messages */
+            background-color: #ffffff; /* White background for the chat area */
+            border: 1px solid #e2e8f0; /* Light border around the chat history */
+            border-radius: 0.5rem; /* Slightly rounded corners */
+            padding: 1rem; /* Internal padding */
+            display: flex;
+            flex-direction: column; /* Stacks messages vertically */
+        }
+
+        /* Base styling for individual chat messages (user or bot) */
+        .message {
+            max-width: 80%; /* Messages won't take full width, creating a bubble effect */
+            padding: 0.75rem 1rem; /* Padding inside the message bubble */
+            border-radius: 1.25rem; /* Highly rounded corners for a chat bubble look */
+            margin-bottom: 0.5rem; /* Space between messages */
+            word-wrap: break-word; /* Ensures long words break and wrap within the bubble */
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); /* Subtle shadow for depth */
+        }
+
+        /* Styling specific to user messages */
+        .message.user {
+            background-color: #007bff; /* Vibrant blue background */
+            color: white; /* White text for contrast */
+            align-self: flex-end; /* Aligns user messages to the right */
+            margin-left: auto; /* Pushes the message to the right within the flex container */
+            border-bottom-right-radius: 0.25rem; /* Slightly less rounded on the bottom-right for a "tail" effect */
+        }
+
+        /* Styling specific to bot messages */
+        .message.bot {
+            background-color: #e2e8f0; /* Light gray background */
+            color: #333; /* Dark gray text */
+            align-self: flex-start; /* Aligns bot messages to the left */
+            margin-right: auto; /* Pushes the message to the left within the flex container */
+            border-bottom-left-radius: 0.25rem; /* Slightly less rounded on the bottom-left for a "tail" effect */
+        }
+
+        /* Custom scrollbar styling for Webkit browsers (Chrome, Safari) */
+        #chat-history::-webkit-scrollbar {
+            width: 8px; /* Width of the scrollbar */
+        }
+
+        #chat-history::-webkit-scrollbar-track {
+            background: #f1f1f1; /* Color of the scrollbar track */
+            border-radius: 10px;
+        }
+
+        #chat-history::-webkit-scrollbar-thumb {
+            background: #888; /* Color of the scrollbar thumb */
+            border-radius: 10px;
+        }
+
+        #chat-history::-webkit-scrollbar-thumb:hover {
+            background: #555; /* Color of the scrollbar thumb on hover */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+    <!--
+        Frontend Component: AppContainer (Root Element)
+        This div acts as the main wrapper for the entire chat application.
+        Tailwind classes are used for:
+        - `bg-white`: White background
+        - `shadow-lg`: Large shadow for depth
+        - `rounded-lg`: Rounded corners
+        - `p-6`: Padding inside
+        - `w-full max-w-md`: Full width on small screens, max-width 28rem (448px) on larger ones (basic responsiveness)
+        - `flex flex-col space-y-4`: Flex container for vertical stacking with consistent spacing
+    -->
+    <div id="app-container" class="bg-white shadow-lg rounded-lg p-6 w-full max-w-md flex flex-col space-y-4">
+        <h1 class="text-2xl font-bold text-center text-gray-800 mb-4">EchoBot: Simple Full Stack Chat</h1>
+
+        <!--
+            Frontend Component: ChatHistoryDisplay
+            This div displays all user messages and bot responses.
+            It's set to grow (`flex-grow`) to fill available space and is scrollable.
+        -->
+        <div id="chat-history" class="flex-grow">
+            <!-- Initial welcome message from the bot -->
+            <div class="message bot">Welcome to EchoBot! Type a message and I'll echo it back.</div>
+            <!-- Messages will be dynamically appended here by JavaScript -->
+        </div>
+
+        <!--
+            Container for MessageInput and SendButton
+            Uses flexbox to align the input field and button side-by-side.
+        -->
+        <div class="flex space-x-2 mt-4">
+            <!--
+                Frontend Component: MessageInput
+                An input field for the user to type their message.
+                Tailwind classes provide styling for appearance, focus states, and responsiveness.
+            -->
+            <input type="text" id="message-input" placeholder="Type your message here..."
+                   class="flex-grow border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+                   aria-label="Message input field">
+            <!--
+                Frontend Component: SendButton
+                A button to trigger message submission.
+                Tailwind classes style its appearance, hover effects, focus states,
+                and provide visual feedback for disabled states (loading).
+            -->
+            <button id="send-button"
+                    class="bg-blue-600 text-white px-5 py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label="Send message button">
+                Send
+            </button>
+        </div>
+    </div>
+
+    <!--
+        3. Modern ES6+ Vanilla JavaScript Logic:
+        This script block contains all the client-side logic for the EchoBot.
+        It handles DOM manipulation, API calls using the Fetch API,
+        and manages UI states like loading and message display.
+    -->
+    <script>
+        // Get references to DOM elements for easy access
+        const chatHistory = document.getElementById('chat-history');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+
+        // API Endpoint Configuration:
+        // This constant defines the path to our Netlify Function backend.
+        // The Netlify.toml redirect rule ensures that requests to /api/chat
+        // are correctly routed to /.netlify/functions/chat.
+        const API_BASE_URL = '/api/chat';
+
+        /**
+         * Adds a message (user or bot) to the chat history display.
+         * It creates a new message element, applies appropriate styling,
+         * and appends it to the chat history container, then scrolls to the bottom.
+         * @param {string} message - The text content of the message.
+         * @param {'user' | 'bot'} type - The type of message ('user' or 'bot') for styling.
+         */
+        function addMessageToChat(message, type) {
+            const messageElement = document.createElement('div');
+            // Add base 'message' class and type-specific class ('user' or 'bot')
+            messageElement.classList.add('message', type);
+            messageElement.textContent = message; // Set the text content of the message
+            chatHistory.appendChild(messageElement); // Append the new message to the chat history
+            scrollToBottom(); // Ensure the latest message is visible
+        }
+
+        /**
+         * Scrolls the `chatHistory` display to the very bottom.
+         * This is crucial to ensure that the most recent messages are always in view.
+         */
+        function scrollToBottom() {
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        /**
+         * Sets the UI into a loading state.
+         * Disables the input field and send button to prevent multiple submissions
+         * and provides visual feedback to the user.
+         */
+        function setLoadingState() {
+            messageInput.disabled = true;
+            sendButton.disabled = true;
+            sendButton.textContent = 'Sending...'; // Change button text to indicate activity
+            messageInput.placeholder = 'Sending message... Please wait...'; // Update input placeholder
+        }
+
+        /**
+         * Resets the UI from the loading state.
+         * Re-enables the input field and send button, and restores their original text/placeholder.
+         */
+        function unsetLoadingState() {
+            messageInput.disabled = false;
+            sendButton.disabled = false;
+            sendButton.textContent = 'Send'; // Restore original button text
+            messageInput.placeholder = 'Type your message here...'; // Restore original input placeholder
+            messageInput.focus(); // Focus the input field for immediate typing convenience
+        }
+
+        /**
+         * 5. Proper API Client Implementation:
+         * Handles sending a user message to the EchoBot backend and processing the response.
+         * This function orchestrates the user interaction, API call, and UI updates.
+         */
+        async function sendMessage() {
+            const userMessage = messageInput.value.trim(); // Get message and remove leading/trailing whitespace
+
+            // Prevent sending empty messages
+            if (!userMessage) {
+                return;
+            }
+
+            // Immediately display the user's message in the chat history for instant feedback
+            addMessageToChat(userMessage, 'user');
+            messageInput.value = ''; // Clear the input field after sending
+
+            // 8. Include Loading States: Activate loading UI
+            setLoadingState();
+
+            try {
+                // 7. Connect to all backend endpoints: Making a POST request to the /api/chat endpoint
+                const response = await fetch(API_BASE_URL, {
+                    method: 'POST', // HTTP method as specified in the API documentation
+                    headers: {
+                        'Content-Type': 'application/json', // Inform the server that we're sending JSON
+                    },
+                    // Convert the JavaScript object to a JSON string for the request body
+                    body: JSON.stringify({ message: userMessage }),
+                });
+
+                // Check if the HTTP response status is in the 2xx range (success)
+                if (response.ok) {
+                    const data = await response.json(); // Parse the JSON response body
+                    // Display the bot's echoed message received from the backend
+                    addMessageToChat(data.botMessage, 'bot');
+                } else {
+                    // Handle API error responses (e.g., 400 Bad Request, 500 Internal Server Error)
+                    const errorData = await response.json(); // Attempt to parse error details
+                    // Use the error message from the backend or a generic one
+                    const errorMessage = errorData.error || 'An unexpected error occurred.';
+                    addMessageToChat(`Error: ${errorMessage}`, 'bot'); // Display error to the user
+                    console.error('API Error:', response.status, errorData); // Log detailed error for debugging
+                }
+            } catch (error) {
+                // Handle network errors (e.g., no internet connection, server unreachable)
+                addMessageToChat(`Network Error: Could not connect to the bot. Please check your connection.`, 'bot');
+                console.error('Fetch Error:', error); // Log the network error
+            } finally {
+                // Always unset the loading state, whether the request succeeded or failed
+                unsetLoadingState();
+            }
+        }
+
+        // Event listener for the Send button click
+        sendButton.addEventListener('click', sendMessage);
+
+        // Event listener for the 'Enter' key press in the message input field
+        // This provides a convenient way for users to send messages without clicking.
+        messageInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Prevent default browser behavior (e.g., new line in textarea)
+                sendMessage(); // Trigger the message sending function
+            }
+        });
+
+        // Initial scroll to bottom when the page loads, in case there are pre-filled messages
+        scrollToBottom();
+    </script>
+
+    <div style="position:fixed;bottom:10px;right:10px;background:rgba(0,0,0,0.7);color:white;padding:5px 10px;border-radius:5px;font-family:sans-serif;font-size:12px">
+        Created by Dakota Rain Lock, powered by Holy Grail. A Dakota Rain Lock Invention.
+    </div>
+    
+</body>
+</html>
